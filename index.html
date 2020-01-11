@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Pokemon Palette - Background transitions</title>
+  <style>
+    body {
+      height: 100vh;
+      margin: 0;
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: 100px 1fr;
+      align-items: center;
+      justify-items: center;
+
+      --primary: #ffd924;
+      --secondary: #e5961d;
+      --tertiary: #cf4310;
+
+      transition: --primary 1s, --secondary 1s, --tertiary 1s;
+
+      background:
+        linear-gradient(var(--primary), transparent),
+        linear-gradient(90deg, var(--secondary), transparent),
+        linear-gradient(-90deg, var(--tertiary), transparent);
+    }
+
+    body:hover {
+      --primary: #71bfb1;
+      --secondary: #5fa195;
+      --tertiary: #c55d00;
+    }
+
+
+    .palette {
+      justify-self: stretch;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: 100px;
+    }
+
+    .palette .primary {
+      background-color: var(--primary);
+    }
+
+    .palette .secondary {
+      background-color: var(--secondary);
+    }
+
+    .palette .tertiary {
+      background-color: var(--tertiary);
+    }
+
+    input {
+      padding: 1em 2em;
+      font-size: 20px;
+      border: none;
+      outline: 0;
+      --bezel-width: 5;
+      --bezel-radius: 20px 0px 20px 0px;
+      --bezel-color: var(--primary);
+      -webkit-mask: paint(bezel, filled);
+      background-image: paint(bezel, stroke);
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="palette">
+    <span class="primary"></span>
+    <span class="secondary"></span>
+    <span class="tertiary"></span>
+  </div>
+  <form action="" id="form">
+    <canvas id="canvas" width="100" height="100"></canvas>
+    <input type="text" placeholder="Name or ID" name="id" autocomplete="off" autofocus>
+  </form>
+
+  <script>
+    window.CSS.registerProperty({
+      name: '--primary',
+      syntax: '<color>',
+      inherits: true,
+      initialValue: '#ffd924',
+    })
+    window.CSS.registerProperty({
+      name: '--secondary',
+      syntax: '<color>',
+      inherits: true,
+      initialValue: '#e5961d',
+    })
+    window.CSS.registerProperty({
+      name: '--tertiary',
+      syntax: '<color>',
+      inherits: true,
+      initialValue: '#cf4310',
+    })
+    window.CSS.paintWorklet.addModule('bezel.js')
+
+    form.addEventListener('submit', handleSubmit)
+
+    async function handleSubmit(event) {
+      event.preventDefault()
+      const data = new FormData(form)
+      const id = data.get('id')
+      const pokemon = await getPokemon(id)
+      renderPokemon(pokemon)
+    }
+
+    async function getPokemon(id) {
+      const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`)
+      const pokemon = await response.json()
+      return pokemon
+    }
+
+    const ctx = canvas.getContext('2d')
+    const image = new Image()
+    image.setAttribute('crossOrigin', 'anonymous')
+
+    function renderPokemon(pokemon) {
+      image.setAttribute('src', pokemon.sprites.front_default)
+      image.addEventListener('load', () => {
+        ctx.clearRect(0,0, canvas.width, canvas.height)
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+        const colors = getColorPalette(ctx)
+        updateProperties(colors)
+      })
+    }
+
+    function getColorPalette(ctx) {
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+      const quality = 90
+      const colors = []
+      for (let i = 0; i < canvas.width * canvas.height; i = i + quality) {
+        const offset = i * 4
+        const alpha = imgData[offset + 3]
+        if (alpha > 0) {
+          const red = imgData[offset]
+          const green = imgData[offset + 1]
+          const blue = imgData[offset + 2]
+          colors.push({ red, green, blue })
+          console.log('%c color', `background: rgba(${red}, ${green}, ${blue})`)
+        }
+      }
+      return colors
+    }
+
+    function updateProperties(colors) {
+      document.body.style.setProperty('--primary', `rgb(${colors[0].red}, ${colors[0].green}, ${colors[0].blue})`)
+      document.body.style.setProperty('--secondary', `rgb(${colors[1].red}, ${colors[1].green}, ${colors[1].blue})`)
+      document.body.style.setProperty('--tertiary', `rgb(${colors[2].red}, ${colors[2].green}, ${colors[2].blue})`)
+    }
+  </script>
+</body>
+
+</html>
